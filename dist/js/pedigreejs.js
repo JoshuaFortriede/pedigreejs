@@ -1357,7 +1357,7 @@
 						{'type': 'ovarian_cancer', 'colour': '#4DAA4D'},
 						{'type': 'pancreatic_cancer', 'colour': '#4289BA'},
 						{'type': 'prostate_cancer', 'colour': '#D5494A'}],
-			labels: ['stillbirth', 'age', 'yob', 'alleles'],
+			labels: ['stillbirth', 'age', 'yob', 'alleles','pregnancy_outcome'],
 			keep_proband_on_reset: false,
 			font_size: '.75em',
 			font_family: 'Helvetica',
@@ -1466,12 +1466,16 @@
 		node.append("path")
 			.filter(function (d) {return !d.data.hidden;})
 			.attr("shape-rendering", "geometricPrecision")
-			.attr("transform", function(d) {return d.data.sex == "U" && !(d.data.miscarriage || d.data.termination) ? "rotate(45)" : "";})
-			.attr("d", d3.symbol().size(function(d) { return (opts.symbol_size * opts.symbol_size) + 2;})
-					.type(function(d) {
-						if(d.data.miscarriage || d.data.termination)
-							return d3.symbolTriangle;
-						return d.data.sex == "F" ? d3.symbolCircle : d3.symbolSquare;}))
+//			.attr("transform", function(d) {return d.data.sex == "U" && !(d.data.pregnancy_outcome == "termination" || d.data.pregnancy_outcome == "miscarriage" || d.data.pregnancy_outcome == "ectopic") ? "rotate(45)" : "";})
+			.attr("transform", function(d) {return (d.data.pregnancy_outcome == "termination" || d.data.pregnancy_outcome == "miscarriage" || d.data.pregnancy_outcome == "ectopic") ? "scale(1,0.5)" : d.data.sex == "U" ? "rotate(45)" : "";})
+			.attr("d", d3.symbol()
+			.size(function(d) { 
+				return (opts.symbol_size * opts.symbol_size) + 2;})
+				.type(function(d) {
+					if("pregnancy_outcome" in d.data && (d.data.pregnancy_outcome == 'miscarriage' || d.data.pregnancy_outcome == 'ectopic' || d.data.pregnancy_outcome == 'termination'))
+						return d3.symbolTriangle;
+					return d.data.sex == "F" ? d3.symbolCircle : d3.symbolSquare;})
+			)
 			.style("stroke", function (d) {
 				return d.data.age && d.data.yob && !d.data.exclude ? "#303030" : "grey";
 			})
@@ -1486,14 +1490,16 @@
 			.attr("id", function (d) {return d.data.name;}).append("path")
 			.filter(function (d) {return !(d.data.hidden && !opts.DEBUG);})
 			.attr("class", "node")
-			.attr("transform", function(d) {return d.data.sex == "U" && !(d.data.miscarriage || d.data.termination) ? "rotate(45)" : "";})
+			.attr("transform", function(d) {return (d.data.pregnancy_outcome == "termination" || d.data.pregnancy_outcome == "miscarriage" || d.data.pregnancy_outcome == "ectopic") ? "scale(1,0.5)" : d.data.sex == "U" ? "rotate(45)" : "";})
+//			.attr("transform", function(d) {return d.data.sex == "U" && !(d.data.pregnancy_outcome == "termination" || d.data.pregnancy_outcome == "miscarriage" || d.data.pregnancy_outcome == "ectopic") ? "rotate(45)" : "";})
+//			.attr("transform", function(d) {return d.data.sex == "U" && !(d.data.miscarriage || d.data.termination) ? "rotate(45)" : "";})
 			.attr("d", d3.symbol().size(function(d) {
 					if (d.data.hidden)
 						return opts.symbol_size * opts.symbol_size / 5;
 					return opts.symbol_size * opts.symbol_size;
 				})
 				.type(function(d) {
-					if(d.data.miscarriage || d.data.termination)
+					if("pregnancy_outcome" in d.data && (d.data.pregnancy_outcome == 'miscarriage' || d.data.pregnancy_outcome == 'ectopic' || d.data.pregnancy_outcome == 'termination'))
 						return d3.symbolTriangle;
 					return d.data.sex == "F" ? d3.symbolCircle :d3.symbolSquare;}));
 
@@ -1559,7 +1565,7 @@
 
 		// alive status = 0; dead status = 1
 		var status = node.append('line')
-		.filter(function (d) {return d.data.status == 1;})
+		.filter(function (d) {return d.data.status == 1 && d.data.pregnancy_outcome != 'miscarriage';})
 		    .style("stroke", "black")
 		    .attr("x1", function(d, i) {return -0.6*opts.symbol_size;})
 		    .attr("y1", function(d, i) {return 0.6*opts.symbol_size;})
@@ -1604,8 +1610,10 @@
 							return alleles;
 						} else if(label === 'age') {
 							return d.data[label] +'y';
-						} else if(label === 'stillbirth') {
-							return "SB";
+						} else if(label === 'pregnancy_outcome') {
+							if(d.data[label] == 'stillbirth'){	return "SB"}
+							if(d.data[label] == 'ectopic'){	return "ECT"}
+							return "";
 						}
 						return d.data[label];
 					}
@@ -1840,7 +1848,6 @@
 		var consultandNodes = node.filter(function (d) {
 			return ("consultand" in d.data && d.data.consultand) && !d.data.hidden;
 		}).append("g")
-		console.log(consultandNodes);
 		addNodeArrow(consultandNodes)	
 
 
@@ -2833,9 +2840,14 @@
 		if(status.length > 0){
 			person.status = status.val();
 		}
+		
+		var status = $('#id_pregnancy_outcome').find("input[type='radio']:checked");
+		if(status.length > 0){
+			person.pregnancy_outcome = status.val();
+		}
 
 		// booleans switches
-		var switches = ["miscarriage", "adopted_in", "adopted_out", "termination", "stillbirth"];
+		var switches = ["miscarriage", "adopted_in", "adopted_out", "termination", "stillbirth","ectopic"];
 		for(var iswitch=0; iswitch<switches.length; iswitch++){
 			var attr = switches[iswitch];
 			var s = $('#id_'+attr);
@@ -3777,18 +3789,29 @@
 		$("#id_status input[value='"+d.data.status+"']").prop('checked', true);
 
 		// switches
-		var switches = ["adopted_in", "adopted_out", "miscarriage", "stillbirth", "termination"];
-		table += '<tr><td colspan="2"><strong>Reproduction:</strong></td></tr>';
-		table += '<tr><td colspan="2">';
-		for(var iswitch=0; iswitch<switches.length; iswitch++){
-			var attr = switches[iswitch];
-			if(iswitch === 2)
-				table += '</td></tr><tr><td colspan="2">';
-			table +=
-			 '<label class="checkbox-inline"><input type="checkbox" id="id_'+attr +
-			    '" name="'+attr+'" value="0" '+(d.data[attr] ? "checked" : "")+'>&thinsp;' +
-			    capitaliseFirstLetter(attr.replace('_', ' '))+'</label>'
-		}
+		var switches = ["adopted_in", "adopted_out", "miscarriage", "stillbirth", "termination","ectopic"];
+		table += '<tr><td colspan="2"><strong>Pregancy Outcome:</strong></td></tr>';
+
+		// Pregnancy Outcome
+		table += '<tr><td colspan="2" id="id_pregnancy_outcome">' +
+				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="birth" '+(d.data.pregnancy_outcome == "birth" ? "checked" : "")+'>&thinsp;Birth</label>' +
+				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="stillbirth" '+(d.data.pregnancy_outcome == "stillbirth" ? "checked" : "")+'>&thinsp;Still Birth</label>' +
+				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="miscarriage" '+(d.data.pregnancy_outcome == "miscarriage" ? "checked" : "")+'>&thinsp;Miscarriage</label>' +
+				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="termination" '+(d.data.pregnancy_outcome == "termination" ? "checked" : "")+'>&thinsp;Termination</label>' +
+				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="ectopic" '+(d.data.pregnancy_outcome == "ectopic" ? "checked" : "")+'>&thinsp;Ectopic Pregnancy</label>' +
+				 '</td></tr>';
+		$("#id_pregnancy_outcome input[value='"+d.data.pregnancy_outcome+"']").prop('checked', true);
+
+		// table += '<tr><td colspan="2">';
+		// for(var iswitch=0; iswitch<switches.length; iswitch++){
+		// 	var attr = switches[iswitch];
+		// 	if(iswitch === 2)
+		// 		table += '</td></tr><tr><td colspan="2">';
+		// 	table +=
+		// 	 '<label class="checkbox-inline"><input type="checkbox" id="id_'+attr +
+		// 	    '" name="'+attr+'" value="0" '+(d.data[attr] ? "checked" : "")+'>&thinsp;' +
+		// 	    capitaliseFirstLetter(attr.replace('_', ' '))+'</label>'
+		// }
 		table += '</td></tr>';
 
 		//
@@ -3828,6 +3851,19 @@
 
 		$('#node_properties').html(table);
 		$('#node_properties').dialog('open');
+		$('input[type=radio][name=pregnancy_outcome]').change(function(){
+			if(this.value == 'birth'){
+				$('input[type=radio][name=status][value=0]').click()
+			}
+			else if(this.value == 'termination' || this.value == 'stillbirth' || this.value == 'ectopic'|| this.value == 'miscarriage'){
+				$('input[type=radio][name=status][value=1]').click()
+			}
+		})
+		$('input[type=radio][name=status]').change(function(){
+			if(this.value == 0){
+				$('input[type=radio][name=pregnancy_outcome][value=birth]').click()
+			}
+		})
 
 		//$('#id_name').closest('tr').toggle();
 		$('#node_properties input[type=radio], #node_properties input[type=checkbox], #node_properties input[type=text], #node_properties input[type=number]').change(function() {
