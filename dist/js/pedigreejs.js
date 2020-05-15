@@ -1343,8 +1343,10 @@
         var opts = $.extend({ // defaults
         	targetDiv: 'pedigree_edit',
         	dataset: [ {"name": "m21", "display_name": "father", "sex": "M", "top_level": true},
-        		       {"name": "f21", "display_name": "mother", "sex": "F", "top_level": true},
-        			   {"name": "ch1", "display_name": "me", "sex": "F", "mother": "f21", "father": "m21", "proband": true}],
+        		       {"name": "f21", "display_name": "mother", "sex": "F", "top_level": true, "consultand": true},
+					   {"name": "ch1", "display_name": "me", "sex": "M", "mother": "f21", "father": "m21", "proband": true},
+					   {"name": "ch2", "display_name": "brother", "sex": "M", "mother": "f21", "father": "m21", "consultand": true}
+					],
         	width: 600,
         	height: 400,
         	symbol_size: 35,
@@ -1429,6 +1431,8 @@
 		/// get score at each depth used to adjust node separation
 		var tree_dimensions = ptree.get_tree_dimensions(opts);
 		if(opts.DEBUG)
+		
+		console.log(opts);
 			console.log('opts.width='+svg_dimensions.width+' width='+tree_dimensions.width+
 					    ' opts.height='+svg_dimensions.height+' height='+tree_dimensions.height);
 
@@ -1813,39 +1817,40 @@
 
 		// draw proband arrow
 		var probandIdx  = pedigree_util.getProbandIndex(opts.dataset);
-		if(typeof probandIdx !== 'undefined') {
-			// var probandNode = pedigree_util.getNodeByName(flattenNodes, opts.dataset[probandIdx].name);
+		
+		ped.append("svg:defs").append("svg:marker")    // arrow head
+		.attr("id", "triangle")
+		.attr("refX", 6)
+		.attr("refY", 6)
+		.attr("markerWidth", 20)
+		.attr("markerHeight", 20)
+		.attr("orient", "auto")
+		.append("path")
+		.attr("d", "M 0 0 12 6 0 12 3 6")
+		.style("fill", "black");
 
-			//create "g" element on which to attach arrow and "P" text label
-			var nodeOfProband = node.filter(function (d) {
-				return ("proband" in d.data && d.data.proband) && !d.data.hidden;
-			}).append("g")
+		//create "g" element on which to attach arrow and "P" text label
+		var nodeOfProband = node.filter(function (d) {
+			return ("proband" in d.data && d.data.proband) && !d.data.hidden;
+		}).append("g")
+		//Use function so that consultands can also be added. Future Development
+		addNodeArrow(nodeOfProband,"P")	
 
-			nodeOfProband.append("text")
-				.attr("class", 'proband_label ped_label')
-				.attr("x", -(10 + opts.symbol_size))
-				.attr("y", opts.symbol_size)
-				//.attr("dy", size)
-				.attr("font-family", opts.font_family)
-				.attr("font-size", opts.font_size)
-				.attr("font-weight", opts.font_weight)
-				.text("P");
+		//Find consultand Nodes and add arrow
+		var consultandNodes = node.filter(function (d) {
+			return ("consultand" in d.data && d.data.consultand) && !d.data.hidden;
+		}).append("g")
+		console.log(consultandNodes);
+		addNodeArrow(consultandNodes)	
 
-			//NOTE This only adds to the graph, it doesnt attach it to the actual proband node...
-			//the arrow head is a definition and does not need to be attached to the node.
-			//In fact, if this is used elsewhere, then we want it attached to the graph, not node	
-			ped.append("svg:defs").append("svg:marker")    // arrow head
-			    .attr("id", "triangle")
-			    .attr("refX", 6)
-			    .attr("refY", 6)
-			    .attr("markerWidth", 20)
-			    .attr("markerHeight", 20)
-			    .attr("orient", "auto")
-			    .append("path")
-			    .attr("d", "M 0 0 12 6 0 12 3 6")
-			    .style("fill", "black");
 
-                nodeOfProband.append("line")		//Arrow Line
+		// drag and zoom
+		zoom = d3.zoom()
+		  .scaleExtent([opts.zoomIn, opts.zoomOut])
+		  .on('zoom', zoomFn);
+
+        function addNodeArrow(node,label){
+			node.append("line")		//Arrow Line
 		        .attr("x1", -opts.symbol_size)
 		        .attr("y1", opts.symbol_size)
 		        .attr("x2", -opts.symbol_size/2)
@@ -1853,12 +1858,17 @@
 		        .attr("stroke-width", 1)
 		        .attr("stroke", "black")
 				.attr("marker-end", "url(#triangle)");
-				
+			if(label){
+				nodeOfProband.append("text")
+				.attr("class", 'proband_label ped_label')
+				.attr("x", -(10 + opts.symbol_size))
+				.attr("y", opts.symbol_size)
+				.attr("font-family", opts.font_family)
+				.attr("font-size", opts.font_size)
+				.attr("font-weight", opts.font_weight)
+				.text("P");
+			}
 		}
-		// drag and zoom
-		zoom = d3.zoom()
-		  .scaleExtent([opts.zoomIn, opts.zoomOut])
-		  .on('zoom', zoomFn);
 
 		function zoomFn() {
 			var t = d3.event.transform;
@@ -3098,8 +3108,12 @@
 		} else {
 			opts.dataset = [
 				{"name": "m21", "display_name": "father", "sex": "M", "top_level": true},
-    		    {"name": "f21", "display_name": "mother", "sex": "F", "top_level": true},
-    		    proband];
+				{"name": "f21", "display_name": "mother", "sex": "F", "top_level": true, "consultand": true},
+				proband,
+				{"name": "ch2", "display_name": "brother", "sex": "M", "mother": "f21", "father": "m21", "consultand": true}
+			];
+				
+
     			//{"name": "ch1", "display_name": "me", "sex": "F", "mother": "f21", "father": "m21", "proband": true}];
 		}
 		ptree.rebuild(opts);
