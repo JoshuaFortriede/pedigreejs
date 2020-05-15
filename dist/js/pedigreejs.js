@@ -377,6 +377,8 @@
 
 	// save content to a file
 	io.save_file = function(opts, content, filename, type){
+		//Need to be able to convert to PED format for saving //JDF
+		
 		if(opts.DEBUG)
 			console.log(content);
 		if(!filename) filename = "ped.txt";
@@ -1568,13 +1570,13 @@
 					return 'display_name' in d.data ? d.data.display_name : '';});
 
 /*		var warn = node.filter(function (d) {
-    		return (!d.data.age || !d.data.yob) && !d.data.hidden;
-		}).append("text")
-		.attr('font-family', 'FontAwesome')
-		.attr("x", ".25em")
-		.attr("y", -(0.4 * opts.symbol_size), -(0.2 * opts.symbol_size))
-		.html("\uf071");
-		warn.append("svg:title").text("incomplete");*/
+            return (!d.data.age || !d.data.yob) && !d.data.hidden;
+        }).append("text")
+        .attr('font-family', 'FontAwesome')
+        .attr("x", ".25em")
+        .attr("y", -(0.4 * opts.symbol_size), -(0.2 * opts.symbol_size))
+        .html("\uf071");
+        warn.append("svg:title").text("incomplete");*/
 
 		var font_size = parseInt(getPx(opts.font_size)) + 4;
 		// display label defined in opts.labels e.g. alleles/genotype data
@@ -1812,8 +1814,26 @@
 		// draw proband arrow
 		var probandIdx  = pedigree_util.getProbandIndex(opts.dataset);
 		if(typeof probandIdx !== 'undefined') {
-			var probandNode = pedigree_util.getNodeByName(flattenNodes, opts.dataset[probandIdx].name);
+			// var probandNode = pedigree_util.getNodeByName(flattenNodes, opts.dataset[probandIdx].name);
 
+			//create "g" element on which to attach arrow and "P" text label
+			var nodeOfProband = node.filter(function (d) {
+				return ("proband" in d.data && d.data.proband) && !d.data.hidden;
+			}).append("g")
+
+			nodeOfProband.append("text")
+				.attr("class", 'proband_label ped_label')
+				.attr("x", -(10 + opts.symbol_size))
+				.attr("y", opts.symbol_size)
+				//.attr("dy", size)
+				.attr("font-family", opts.font_family)
+				.attr("font-size", opts.font_size)
+				.attr("font-weight", opts.font_weight)
+				.text("P");
+
+			//NOTE This only adds to the graph, it doesnt attach it to the actual proband node...
+			//the arrow head is a definition and does not need to be attached to the node.
+			//In fact, if this is used elsewhere, then we want it attached to the graph, not node	
 			ped.append("svg:defs").append("svg:marker")    // arrow head
 			    .attr("id", "triangle")
 			    .attr("refX", 6)
@@ -1825,14 +1845,15 @@
 			    .attr("d", "M 0 0 12 6 0 12 3 6")
 			    .style("fill", "black");
 
-			ped.append("line")
-		        .attr("x1", probandNode.x-opts.symbol_size)
-		        .attr("y1", probandNode.y+opts.symbol_size)
-		        .attr("x2", probandNode.x-opts.symbol_size/2)
-		        .attr("y2", probandNode.y+opts.symbol_size/2)
+                nodeOfProband.append("line")		//Arrow Line
+		        .attr("x1", -opts.symbol_size)
+		        .attr("y1", opts.symbol_size)
+		        .attr("x2", -opts.symbol_size/2)
+		        .attr("y2", opts.symbol_size/2)
 		        .attr("stroke-width", 1)
 		        .attr("stroke", "black")
-		        .attr("marker-end", "url(#triangle)");
+				.attr("marker-end", "url(#triangle)");
+				
 		}
 		// drag and zoom
 		zoom = d3.zoom()
