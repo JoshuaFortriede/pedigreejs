@@ -1570,7 +1570,8 @@
 		    .attr("x1", function(d, i) {return -0.6*opts.symbol_size;})
 		    .attr("y1", function(d, i) {return 0.6*opts.symbol_size;})
 		    .attr("x2", function(d, i) {return 0.6*opts.symbol_size;})
-		    .attr("y2", function(d, i) {return -0.6*opts.symbol_size;});
+			.attr("y2", function(d, i) {return -0.6*opts.symbol_size;})
+			.attr("class",function(d){return d.data['pregnancy_outcome'] + ' deceased_line'});
 
 		// names of individuals
 		addLabel(opts, node, ".25em", -(0.4 * opts.symbol_size), -(0.1 * opts.symbol_size),
@@ -1592,7 +1593,7 @@
 		// display label defined in opts.labels e.g. alleles/genotype data
 		for(var ilab=0; ilab<opts.labels.length; ilab++) {
 			var label = opts.labels[ilab];
-			addLabel(opts, node, ".25em", -(0.7 * opts.symbol_size),
+			addLabel(opts, node, ".25em",0,
 				function(d) {
 					if(!d.data[label])
 						return;
@@ -1617,7 +1618,7 @@
 						}
 						return d.data[label];
 					}
-				}, 'indi_details');
+				}, 'indi_details node_label');
 		}
 
 		// individuals disease details
@@ -1860,8 +1861,8 @@
 			node.append("line")		//Arrow Line
 		        .attr("x1", -opts.symbol_size)
 		        .attr("y1", opts.symbol_size)
-		        .attr("x2", -opts.symbol_size/2)
-		        .attr("y2", opts.symbol_size/2)
+		        .attr("x2", -Math.sqrt(2*(opts.symbol_size/2)**2))
+		        .attr("y2", Math.sqrt(2*(opts.symbol_size/2)**2))
 		        .attr("stroke-width", 1)
 		        .attr("stroke", "black")
 				.attr("marker-end", "url(#triangle)");
@@ -3817,7 +3818,7 @@
 		//
 		var exclude = ["children", "name", "parent_node", "top_level", "id", "noparents",
 			           "level", "age", "sex", "status", "display_name", "mother", "father",
-			           "yob", "mztwin", "dztwin"];
+			           "yob", "mztwin", "dztwin","pregnancy_outcome"];
 		$.merge(exclude, switches);
 		table += '<tr><td colspan="2"><strong>Age of Diagnosis:</strong></td></tr>';
 		$.each(opts.diseases, function(k, v) {
@@ -3834,6 +3835,7 @@
 						(diagnosis_age !== undefined ? diagnosis_age : "") +"'></td></tr>";
 		});
 
+		//Below Diseases
 		table += '<tr><td colspan="2" style="line-height:1px;"></td></tr>';
 		$.each(d.data, function(k, v) {
 			if($.inArray(k, exclude) == -1) {

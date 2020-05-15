@@ -1,4 +1,11 @@
+.ectopic.deceased_line, .termination.deceased_line  {
+	transform:scale(0.6,0.6);
+	stroke-width:1.66px;
+}
 
+.node_label{
+	text-anchor: middle;
+}
 .disabled {
 	color: grey;
 }
@@ -7,4 +14,8 @@
 }
 .addsibling, .addchild {
 	cursor: default;
+}
+
+.ectopic .deceased_line {
+	transform:scale(0.6,0.6)
 }
