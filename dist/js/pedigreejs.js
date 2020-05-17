@@ -2867,7 +2867,7 @@
 		
 		var pregnancy_outcome = $('#id_pregnancy_outcome').find("input[type='radio']:checked");
 		if(pregnancy_outcome.length > 0){
-			person.pregnancy_outcome = status.val();
+			person.pregnancy_outcome = pregnancy_outcome.val();
 		}
 
 		// booleans switches
