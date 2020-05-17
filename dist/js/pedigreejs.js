@@ -1342,7 +1342,7 @@
 	ptree.build = function(options) {
         var opts = $.extend({ // defaults
         	targetDiv: 'pedigree_edit',
-        	dataset: [ {"name": "m21", "display_name": "father", "sex": "M", "top_level": true},
+        	dataset: [ {"name": "m21", "display_name": "father", "sex": "M", "top_level": true, "status":1},
         		       {"name": "f21", "display_name": "mother", "sex": "F", "top_level": true, "consultand": true},
 					   {"name": "ch1", "display_name": "me", "sex": "M", "mother": "f21", "father": "m21", "proband": true},
 					   {"name": "ch2", "display_name": "brother", "sex": "M", "mother": "f21", "father": "m21", "consultand": true}
@@ -1366,6 +1366,12 @@
 			node_background: '#fdfdfd',
 			validate: true,
         	DEBUG: false}, options );
+
+		$.map(opts.dataset, function(val, i){
+			"pregnancy_outcome" in opts.dataset[i] ? '' : opts.dataset[i].pregnancy_outcome="birth";
+			"status" in opts.dataset[i] ? '' : opts.dataset[i].status=0;
+			"proband" in opts.dataset[i] ? '' : opts.dataset[i].proband= false;
+		});
 
         if ( $( "#fullscreen" ).length === 0 ) {
         	// add undo, redo, fullscreen buttons and event listeners once
@@ -1539,7 +1545,7 @@
 
 		// adopted in/out brackets
 		node.append("path")
-			.filter(function (d) {return !d.data.hidden && (d.data.adopted_in || d.data.adopted_out);})
+			.filter(function (d) {return !d.data.hidden && (d.data.adopted);})
 			.attr("d", function(d) { {
 				function get_bracket(dx, dy, indent) {
 					return 	"M" + (dx+indent) + "," + dy +
@@ -1554,13 +1560,14 @@
 				return get_bracket(dx, dy, indent)+get_bracket(-dx, dy, -indent);
 				}})
 			.style("stroke", function (d) {
-				return d.data.age && d.data.yob && !d.data.exclude ? "#303030" : "grey";
+				return d.data.age && d.data.yob && !d.data.exclude ? "#303030" : "grey";	//Question: Why color difference?
 			})
 			.style("stroke-width", function (d) {
 				return ".1em";
 			})
 			.style("stroke-dasharray", function (d) {return !d.data.exclude ? null : ("3, 3");})
-			.style("fill", "none");
+			.style("fill", "none")
+			.attr("class","adopted_bracket");
 
 
 		// alive status = 0; dead status = 1
@@ -1773,7 +1780,8 @@
 					return "#000";
 				})
 				.attr("stroke-dasharray", function(d, i) {
-					if(!d.target.data.adopted_in) return null;
+					// if(!d.target.data.adopted_in) return null;
+					if(!"adoption_type" in d.target.data || d.target.data.adoption_type != 'adopted_in') return null;
 					var dash_len = Math.abs(d.source.y-((d.source.y + d.target.y) / 2));
 					var dash_array = [dash_len, 0, Math.abs(d.source.x-d.target.x), 0];
 					var twins = pedigree_util.getTwins(opts.dataset, d.target.data);
@@ -2857,8 +2865,8 @@
 			person.status = status.val();
 		}
 		
-		var status = $('#id_pregnancy_outcome').find("input[type='radio']:checked");
-		if(status.length > 0){
+		var pregnancy_outcome = $('#id_pregnancy_outcome').find("input[type='radio']:checked");
+		if(pregnancy_outcome.length > 0){
 			person.pregnancy_outcome = status.val();
 		}
 
@@ -2880,8 +2888,39 @@
 		var sex = $('#id_sex').find("input[type='radio']:checked");
 		if(sex.length > 0){
 			person.sex = sex.val();
-			update_cancer_by_sex(person);
+			// update_cancer_by_sex(person);		//Commented because this is not currently used and is causing issues
 		}
+		
+		// current adopted
+		var adopted = $('#id_adopted').prop("checked");
+		if(adopted){
+			person.adopted = true;	$(".adoption").css('display',"table-row")
+			
+			var adoption_type = $('#id_adoption_type').find("input[type='radio']:checked");
+			if(adoption_type.length > 0){
+				console.log(adoption_type.val());
+				person.adoption_type = adoption_type.val();
+				if(adoption_type.val() == 'adopted_out'){	$(".adopted_out_info").css('display','table-row')	; 	console.log('show')}
+				else									{	$(".adopted_out_info").css('display','none')		;	console.log('hide')}
+				// update_cancer_by_sex(person);		//Commented because this is not currently used and is causing issues
+			}
+			else{
+				delete person.adoption_type;
+			}
+		
+		}	
+		else{	delete person.adopted;	$(".adoption, .adopted_out_info").css('display','none'); delete person.adoption_type;}
+
+
+				
+		
+		
+		// current proband
+		var proband = $('#id_proband').prop("checked");
+		if(proband){	person.proband = true;	}
+		else{			person.proband = false;	}
+
+		
 
 		// Ashkenazi status, 0 = not Ashkenazi, 1 = Ashkenazi
 		update_ashkn(newdataset);
@@ -3135,7 +3174,7 @@
 				{"name":"Knx","display_name":"son","sex":"M","mother":"ch1","father":"Spj","status":"0"}];
 		} else {
 			opts.dataset = [
-				{"name": "m21", "display_name": "father", "sex": "M", "top_level": true},
+				{"name": "m21", "display_name": "father", "sex": "M", "top_level": true, "status":1},
 				{"name": "f21", "display_name": "mother", "sex": "F", "top_level": true, "consultand": true},
 				proband,
 				{"name": "ch2", "display_name": "brother", "sex": "M", "mother": "f21", "father": "m21", "consultand": true}
@@ -3803,20 +3842,36 @@
 				 '<label class="checkbox-inline"><input type="radio" name="status" value="1" '+(d.data.status === 1 ? "checked" : "")+'>&thinsp;Deceased</label>' +
 				 '</td></tr>';
 				 $("#id_status input[value='"+d.data.status+"']").prop('checked', true);
-				 
+		
+		
+		table += '<tr><td colspan="2">' + 
+				 '<label class="checkbox-inline"><input type="checkbox" id="id_adopted" name="adopted" value="0" '+(d.data.adopted ? "checked" : "")+'>&thinsp;Adopted</label>'
+				 +'</td></tr>';
+	 
 				 // switches
-				 var switches = ["adopted_in", "adopted_out", "miscarriage", "stillbirth", "termination","ectopic"];
-				 table += '<tr><td colspan="2"><strong>Pregancy Outcome:</strong></td></tr>';
-				 
-				 // Pregnancy Outcome
-				 table += '<tr><td colspan="2" id="id_pregnancy_outcome">' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="birth" '+(d.data.pregnancy_outcome == "birth" ? "checked" : "")+'>&thinsp;Birth</label>' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="stillbirth" '+(d.data.pregnancy_outcome == "stillbirth" ? "checked" : "")+'>&thinsp;Still Birth</label>' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="fetus" '+(d.data.pregnancy_outcome == "fetus" ? "checked" : "")+'>&thinsp;Fetus</label>' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="miscarriage" '+(d.data.pregnancy_outcome == "miscarriage" ? "checked" : "")+'>&thinsp;Miscarriage</label>' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="termination" '+(d.data.pregnancy_outcome == "termination" ? "checked" : "")+'>&thinsp;Termination</label>' +
-				 '<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="ectopic" '+(d.data.pregnancy_outcome == "ectopic" ? "checked" : "")+'>&thinsp;Ectopic Pregnancy</label>' +
-				 '</td></tr>';
+		var switches = ["adopted_in", "adopted_out"];
+			// switches
+		table += '<tr class="adoption" style="display:' + (d.data.adopted ? 'table-row' : 'none') +'"><td colspan="2"><strong>Adoption:</strong></td></tr>';
+		table += '<tr class="adoption" style="display:' + (d.data.adopted ? 'table-row' : 'none') +'">';
+		
+		table += '<td colspan="2" id="id_adoption_type">'
+			+ '<label class="checkbox-inline"><input type="radio" name="adoption_type" value="adopted_in"> Adopted In</label>'
+			+ '<label class="checkbox-inline"><input type="radio" name="adoption_type" value="adopted_out"> Adopted Out</label>';
+			+ '</td></tr>';
+		
+		table += '<tr class="adopted_out_info" style="display:' + (d.data.adoption_type=='adopted_out' ? 'table-row' : 'none') +'"><td colspan="2"><label for="add_adopted_parent">Add Adopted Parent: </label><input type="text" id="add_adopted_parent"></td></tr>';
+
+		table += '<tr><td colspan="2"><strong>Pregancy Outcome:</strong></td></tr>';
+			
+		// Pregnancy Outcome
+		table += '<tr><td colspan="2" id="id_pregnancy_outcome">' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="birth" '		+(d.data.pregnancy_outcome == "birth" ? 		"checked" : "")+'>&thinsp;Birth</label>' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="stillbirth" '	+(d.data.pregnancy_outcome == "stillbirth" ? 	"checked" : "")+'>&thinsp;Still Birth</label>' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="fetus" '		+(d.data.pregnancy_outcome == "fetus" ? 		"checked" : "")+'>&thinsp;Fetus</label>' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="miscarriage" '	+(d.data.pregnancy_outcome == "miscarriage" ? 	"checked" : "")+'>&thinsp;Miscarriage</label>' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="termination" '	+(d.data.pregnancy_outcome == "termination" ? 	"checked" : "")+'>&thinsp;Termination</label>' +
+			'<label class="checkbox-inline"><input type="radio" name="pregnancy_outcome" value="ectopic" '		+(d.data.pregnancy_outcome == "ectopic" ? 		"checked" : "")+'>&thinsp;Ectopic Pregnancy</label>' +
+			'</td></tr>';
 		$("#id_pregnancy_outcome input[value='"+d.data.pregnancy_outcome+"']").prop('checked', true);
 
 		// table += '<tr><td colspan="2">';
