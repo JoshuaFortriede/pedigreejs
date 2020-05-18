@@ -2910,25 +2910,27 @@
 		}	
 		else{	delete person.adopted;	$(".adoption, .adopted_out_info").css('display','none'); delete person.adoption_type;}
 
-		// current proband
+		// set proband and remove 
 		var proband = $('#id_proband').prop("checked");
 		if(proband){
-			console.log(person);	
-			console.log(newdataset);	
 			for(p=0;p<newdataset.length;p++){
-				// if(newdataset[p].name != person.name && newdataset[p].proband){
 				delete newdataset[p].proband;
-				// }
 			}	
 			person.proband = true;
-			console.log(newdataset);	
+			if(person.consultand)
+				$('#id_consultand').click()
 		}
 		else{			delete person.proband	}
 
 		// current consultand
 		var consultand = $('#id_consultand').prop("checked");
-		if(consultand){	person.consultand = true;	}
-		else{			delete person.consultand	}
+		if(consultand){
+			person.consultand = true;
+			if(person.proband)
+				$('#id_proband').click();
+				delete person.proband;
+		}
+		else{	delete person.consultand	}
 
 		
 
@@ -3829,16 +3831,16 @@
 
 		var table = "<table id='person_details' class='table'>";
 
+		table += '<tr><td colspan="2">'
+			+ '<label class="checkbox-inline"><input type="checkbox" id="id_proband" name="proband" value="0" '+(d.data.proband ? "checked" : "")+'>&thinsp;Proband</label>'
+			+ '<label class="checkbox-inline"><input type="checkbox" id="id_consultand" name="consultand" value="0" '+(d.data.consultand ? "checked" : "")+'>&thinsp;Consultand</label>'
+			+'</td></tr>';
+
 		table += "<tr><td style='text-align:right'>Unique ID</td><td><input class='form-control' type='text' id='id_name' name='name' value="+
 		(d.data.name ? d.data.name : "")+"></td></tr>";
 		table += "<tr><td style='text-align:right'>Name</td><td><input class='form-control' type='text' id='id_display_name' name='display_name' value="+
 				(d.data.display_name ? d.data.display_name : "")+"></td></tr>";
 
-		table += '<tr><td colspan="2">'
-			+ '<label class="checkbox-inline"><input type="checkbox" id="id_proband" name="proband" value="0" '+(d.data.proband ? "checked" : "")+'>&thinsp;Proband</label>'
-			+ '<label class="checkbox-inline"><input type="checkbox" id="id_consultand" name="consultand" value="0" '+(d.data.consultand ? "checked" : "")+'>&thinsp;Consultand</label>'
-			
-			+'</td></tr>';
 
 		table += "<tr><td style='text-align:right'>Age</td><td><input class='form-control' type='number' id='id_age' min='0' max='120' name='age' style='width:7em' value="+
 				(d.data.age ? d.data.age : "")+"></td></tr>";
