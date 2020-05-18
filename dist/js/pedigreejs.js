@@ -3907,7 +3907,7 @@
 		//
 		var exclude = ["children", "name", "parent_node", "top_level", "id", "noparents",
 			           "level", "age", "sex", "status", "display_name", "mother", "father",
-			           "yob", "mztwin", "dztwin","pregnancy_outcome","adopted","pregnancy_outcome","proband","consultand"];
+			           "yob", "mztwin", "dztwin","adopted","pregnancy_outcome","proband","consultand"];
 		$.merge(exclude, switches);
 		table += '<tr><td colspan="2"><strong>Age of Diagnosis:</strong></td></tr>';
 		$.each(opts.diseases, function(k, v) {
@@ -3951,8 +3951,9 @@
 			}
 		})
 		$('input[type=radio][name=status]').change(function(){
-			if(this.value == 0 && !$('input[type=radio][name=pregnancy_outcome]').val() == 'fetus'){
-				$('input[type=radio][name=pregnancy_outcome][value=birth]').click()
+			var pregnancy_outcome = $('input[type=radio][name=pregnancy_outcome]').val();
+			if(this.value == 0 && pregnancy_outcome != 'fetus' && pregnancy_outcome != 'birth'){
+				$('input[type=radio][name=pregnancy_outcome][value=birth]').click();
 			}
 		})
 
