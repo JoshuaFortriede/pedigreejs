@@ -457,7 +457,6 @@
 					utils.messages("File Error", ( err1.message ? err1.message : err1));
 					return;
 				}
-				console.log(opts.dataset);
 				try{
 					ptree.rebuild(opts);
 					if(risk_factors !== undefined) {
@@ -1390,11 +1389,12 @@
 
         if(opts.DEBUG)
         	pedigree_util.print_opts(opts);
-        var svg_dimensions = get_svg_dimensions(opts);
-        var svg = d3.select("#"+opts.targetDiv)
+		 var svg_dimensions = get_svg_dimensions(opts);
+		 var svg = d3.select("#"+opts.targetDiv)
 					 .append("svg:svg")
 					 .attr("width", svg_dimensions.width)
 					 .attr("height", svg_dimensions.height);
+		svg.append("defs").html($("#svg_patterns svg defs").clone(true).html());
 
 		svg.append("rect")
 			.attr("width", "100%")
@@ -1436,8 +1436,6 @@
 		/// get score at each depth used to adjust node separation
 		var tree_dimensions = ptree.get_tree_dimensions(opts);
 		if(opts.DEBUG)
-		
-		console.log(opts);
 			console.log('opts.width='+svg_dimensions.width+' width='+tree_dimensions.width+
 					    ' opts.height='+svg_dimensions.height+' height='+tree_dimensions.height);
 
@@ -1512,35 +1510,46 @@
 		var pienode = node.selectAll("pienode")
 		   .data(function(d) {     		// set the disease data for the pie plot
 			   var ncancers = 0;
+			   var diseases = [];
 			   var cancers = $.map(opts.diseases, function(val, i){
-				   if(prefixInObj(opts.diseases[i].type, d.data)) {ncancers++; return 1;} else return 0;
+				   if(prefixInObj(opts.diseases[i].type, d.data)) {diseases.push([i]);ncancers++; return 1;} else return 0;
 			   });
 			   if(ncancers === 0) cancers = [1];
 			   return [$.map(cancers, function(val, i){
 				   return {'cancer': val, 'ncancers': ncancers, 'id': d.data.name,
 					   	   'sex': d.data.sex, 'proband': d.data.proband, 'hidden': d.data.hidden,
 					   	   'affected': d.data.affected,
-					   	   'exclude': d.data.exclude};})];
+							'exclude': d.data.exclude,
+							'diseases': diseases
+					};})];
 		   })
 		   .enter()
-		    .append("g");
+		   	.append("g");
 
 		pienode.selectAll("path")
-		    .data(d3.pie().value(function(d) {return d.cancer;}))
-		    .enter().append("path")
+			.data(d3.pie().value(function(d) {return d.cancer;}))
+			.enter().append("path")
+			.filter(function(d){return d.startAngle != d.endAngle})	// This removes the "cancers" that have no value
 		    	.attr("clip-path", function(d) {return "url(#"+d.data.id+")";}) // clip the rectangle
 			    .attr("class", "pienode")
 			    .attr("d", d3.arc().innerRadius(0).outerRadius(opts.symbol_size))
 			    .style("fill", function(d, i) {
+
 			    	if(d.data.exclude)
 			    		return 'lightgrey';
 			    	if(d.data.ncancers === 0) {
 			    		if(d.data.affected)
 			    			return 'darkgrey';
 				    	return opts.node_background;
-			    	}
-			    	return opts.diseases[i].colour;
-			    });
+					}
+					if(opts.displayType == "pattern"){
+						return "url(#"+opts.diseases[d.data.diseases[i]].pattern+")"
+					}
+			    	return opts.diseases[d.data.diseases[i]].colour;
+				})
+				.style("stroke", "black")
+				.style("stroke-width", 2);
+				
 
 		// adopted in/out brackets
 		node.append("path")
@@ -2215,7 +2224,7 @@
 			console.error(e);
 			throw e;
 		}
-
+		
 		try {
 			templates.update(opts);
 		} catch(e) {
@@ -2899,8 +2908,8 @@
 			if(adoption_type.length > 0){
 				console.log(adoption_type.val());
 				person.adoption_type = adoption_type.val();
-				if(adoption_type.val() == 'adopted_out'){	$(".adopted_out_info").css('display','table-row')	; 	console.log('show')}
-				else									{	$(".adopted_out_info").css('display','none')		;	console.log('hide')}
+				if(adoption_type.val() == 'adopted_out'){	$(".adopted_out_info").css('display','table-row')	;}
+				else									{	$(".adopted_out_info").css('display','none')		;}
 				// update_cancer_by_sex(person);		//Commented because this is not currently used and is causing issues
 			}
 			else{
@@ -3907,13 +3916,13 @@
 		//
 		var exclude = ["children", "name", "parent_node", "top_level", "id", "noparents",
 			           "level", "age", "sex", "status", "display_name", "mother", "father",
-			           "yob", "mztwin", "dztwin","adopted","pregnancy_outcome","proband","consultand"];
+			           "yob", "mztwin", "dztwin","adopted","pregnancy_outcome","proband","consultand","adoption_type"];
 		$.merge(exclude, switches);
 		table += '<tr><td colspan="2"><strong>Age of Diagnosis:</strong></td></tr>';
 		$.each(opts.diseases, function(k, v) {
 			exclude.push(v.type+"_diagnosis_age");
 
-			var disease_colour = '&thinsp;<span style="padding-left:5px;background:'+opts.diseases[k].colour+'"></span>';
+			var disease_colour = '&thinsp;<span class="hide" style="padding-left:5px;background:'+opts.diseases[k].colour+'"></span>';
 			var diagnosis_age = d.data[v.type + "_diagnosis_age"];
 
 			table += "<tr><td style='text-align:right'>"+capitaliseFirstLetter(v.type.replace("_", " "))+
